@@ -1,5 +1,6 @@
 import pool, { ensureDb } from '@/lib/db';
 import { getCached, setCached } from '@/lib/cache';
+import yahooFinance from '@/lib/yf';
 
 export interface LeaderboardEntry {
   portfolioId: string;
@@ -21,15 +22,19 @@ const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
 async function fetchPrice(symbol: string, assetType: string): Promise<number | null> {
   try {
-    const baseUrl =
-      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const resp = await fetch(
-      `${baseUrl}/api/quote?symbol=${encodeURIComponent(symbol)}&type=${assetType}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    return data.price ?? null;
+    if (assetType === 'crypto') {
+      const coinId = symbol.toLowerCase();
+      const resp = await fetch(
+        `https://api.coingecko.com/api/v3/coins/markets?ids=${coinId}&vs_currency=usd`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      return data?.[0]?.current_price ?? null;
+    }
+
+    const quote = await yahooFinance.quote(symbol);
+    return quote?.regularMarketPrice ?? null;
   } catch {
     return null;
   }

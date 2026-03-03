@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool, { ensureDb } from '@/lib/db';
 import { nanoid } from 'nanoid';
+import yahooFinance from '@/lib/yf';
 import { AssetType, Holding, Portfolio } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 async function fetchCurrentPrice(symbol: string, type: AssetType): Promise<number> {
-  const baseUrl =
-    process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const resp = await fetch(`${baseUrl}/api/quote?symbol=${encodeURIComponent(symbol)}&type=${type}`);
-  if (!resp.ok) throw new Error('Failed to fetch price');
-  const data = await resp.json();
-  if (!data.price) throw new Error('No price returned');
-  return data.price;
+  if (type === 'crypto') {
+    const coinId = symbol.toLowerCase();
+    const resp = await fetch(
+      `https://api.coingecko.com/api/v3/coins/markets?ids=${coinId}&vs_currency=usd`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!resp.ok) throw new Error('Failed to fetch crypto price');
+    const data = await resp.json();
+    const price = data?.[0]?.current_price;
+    if (!price) throw new Error('No price returned');
+    return price;
+  }
+
+  const quote = await yahooFinance.quote(symbol);
+  const price = quote?.regularMarketPrice;
+  if (!price) throw new Error('No price returned');
+  return price;
 }
 
 export async function POST(request: NextRequest) {
