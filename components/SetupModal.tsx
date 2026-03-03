@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
-import { TrendingUp } from 'lucide-react';
+import { PiggyBank } from 'lucide-react';
 
 export default function SetupModal() {
   const [name, setName] = useState('');
@@ -41,29 +41,29 @@ export default function SetupModal() {
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-md w-full text-center">
         <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center">
-            <TrendingUp className="w-8 h-8 text-green-400" />
+          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center">
+            <PiggyBank className="w-8 h-8 text-amber-400" />
           </div>
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">Welcome to MarketSim</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">Welcome to Undercapitalized Hedge Funds</h1>
         <p className="text-gray-400 mb-8">
-          Practice investing with <span className="text-green-400 font-semibold">$100,000</span> virtual cash.
-          Trade global stocks, ETFs, crypto, forex, and commodities — no real money at risk.
+          Start your glorious micro-fund with <span className="text-amber-400 font-semibold">$100,000</span> in paper AUM.
+          Trade global stocks, ETFs, crypto, forex, and commodities — and keep your real money safely under the mattress.
         </p>
 
         <div className="space-y-4">
           <div className="text-left">
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Choose a display name
+              Name your fund
             </label>
             <input
               type="text"
               className="input w-full"
-              placeholder="e.g. WarrenB, CryptoKing..."
+              placeholder="e.g. Dunning-Kruger Capital, Two-and-a-Half Sigma…"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              maxLength={30}
+              maxLength={40}
               autoFocus
             />
           </div>
@@ -77,12 +77,12 @@ export default function SetupModal() {
             disabled={loading || !name.trim()}
             className="btn-primary w-full py-3 text-base"
           >
-            {loading ? 'Creating...' : 'Start Trading →'}
+            {loading ? 'Incorporating…' : 'Launch Fund →'}
           </button>
         </div>
 
         <p className="mt-6 text-xs text-gray-600">
-          Your portfolio is stored locally and identified by your browser. No account required.
+          Your fund is tied to your account. (Unfortunately, imaginary compliance still requires a login.)
         </p>
       </div>
     </div>

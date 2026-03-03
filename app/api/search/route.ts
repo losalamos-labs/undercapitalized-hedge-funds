@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import yahooFinance from '@/lib/yf';
 import { SearchResult, AssetType } from '@/lib/types';
-
-const KNOWN_CRYPTO_IDS = new Set([
-  'bitcoin', 'ethereum', 'solana', 'ripple', 'cardano', 'dogecoin', 'polkadot',
-  'litecoin', 'chainlink', 'avalanche-2', 'matic-network', 'binancecoin',
-  'shiba-inu', 'uniswap', 'cosmos', 'algorand', 'stellar', 'tron',
-]);
+import { guessAssetType } from '@/lib/asset';
 
 async function searchCoinGecko(q: string): Promise<SearchResult[]> {
   try {
@@ -30,14 +25,6 @@ async function searchCoinGecko(q: string): Promise<SearchResult[]> {
   }
 }
 
-function guessType(quoteType: string | undefined, symbol: string): AssetType {
-  const qt = quoteType?.toUpperCase() || '';
-  if (qt === 'ETF' || qt === 'MUTUALFUND') return 'etf';
-  if (qt === 'CURRENCY' || symbol.includes('=X')) return 'forex';
-  if (symbol.endsWith('=F')) return 'commodity';
-  if (KNOWN_CRYPTO_IDS.has(symbol.toLowerCase())) return 'crypto';
-  return 'stock';
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -67,7 +54,7 @@ export async function GET(request: NextRequest) {
           quoteType?: string;
           exchange?: string;
         };
-        const type = guessType(qq.quoteType, qq.symbol);
+        const type = guessAssetType(qq.symbol, qq.quoteType);
         // Include all exchange types — international stocks, ETFs, forex, commodities
         results.push({
           symbol: qq.symbol,

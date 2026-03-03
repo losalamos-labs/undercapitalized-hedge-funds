@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { formatCurrency } from '@/lib/format';
-import { TrendingUp, LogOut, User } from 'lucide-react';
+import { PiggyBank, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSession, signOut } from 'next-auth/react';
 
@@ -26,8 +26,9 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 text-white font-bold text-xl">
-            <TrendingUp className="w-6 h-6 text-green-400" />
-            <span className="text-green-400">MarketSim</span>
+            <PiggyBank className="w-6 h-6 text-amber-400" />
+            <span className="text-amber-400 sm:hidden">UHF</span>
+            <span className="text-amber-400 hidden sm:inline">Undercapitalized Hedge Funds</span>
           </Link>
 
           {/* Nav links - hidden on mobile */}

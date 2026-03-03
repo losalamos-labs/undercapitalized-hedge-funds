@@ -8,8 +8,9 @@ import { SessionProviderWrapper } from '@/components/SessionProviderWrapper';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'MarketSim — Virtual Investment Simulator',
-  description: 'Practice investing with $100,000 virtual cash. Trade global stocks, ETFs, crypto, forex, and commodities.',
+  title: 'Undercapitalized Hedge Funds — Paper Trading Simulator',
+  description:
+    'Pretend you run a hedge fund (with $100,000 of paper AUM). Trade global stocks, ETFs, crypto, forex, and commodities — no real money at risk.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

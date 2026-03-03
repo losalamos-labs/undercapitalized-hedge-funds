@@ -1,12 +1,14 @@
 {
-  "name": "marketsim",
+  "name": "undercapitalized-hedge-funds",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -32,13 +34,18 @@
     "yahoo-finance2": "^3.13.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/testing-library__jest-dom": "^5.14.9",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
+    "jsdom": "^28.1.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, LogIn, UserPlus, TrendingUp } from 'lucide-react';
+import { AlertCircle, LogIn, UserPlus, PiggyBank } from 'lucide-react';
 
 type Tab = 'login' | 'register';
 
@@ -48,10 +48,10 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <TrendingUp className="w-8 h-8 text-green-400" />
-            <span className="text-2xl font-bold text-white">MarketSim</span>
+            <PiggyBank className="w-8 h-8 text-amber-400" />
+            <span className="text-2xl font-bold text-white">Undercapitalized Hedge Funds</span>
           </div>
-          <p className="text-gray-400 text-sm">Practice investing with $100,000 virtual cash</p>
+          <p className="text-gray-400 text-sm">Run your totally-serious micro-fund with $100,000 of pretend AUM</p>
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-xl">
@@ -60,7 +60,7 @@ export default function LoginPage() {
             <button
               onClick={() => { setTab('login'); setError(''); }}
               className={`flex-1 py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                tab === 'login' ? 'bg-green-500 text-white' : 'text-gray-400 hover:text-white'
+                tab === 'login' ? 'bg-amber-500 text-gray-950' : 'text-gray-400 hover:text-white'
               }`}
             >
               <LogIn className="w-4 h-4" />
@@ -69,7 +69,7 @@ export default function LoginPage() {
             <button
               onClick={() => { setTab('register'); setError(''); }}
               className={`flex-1 py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                tab === 'register' ? 'bg-green-500 text-white' : 'text-gray-400 hover:text-white'
+                tab === 'register' ? 'bg-amber-500 text-gray-950' : 'text-gray-400 hover:text-white'
               }`}
             >
               <UserPlus className="w-4 h-4" />
@@ -82,7 +82,7 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
               <input
                 type="text"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
                 placeholder="Enter username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -95,7 +95,7 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
               <input
                 type="password"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
                 placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -113,7 +113,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+              className="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-950 font-semibold rounded-lg transition-colors"
             >
               {loading ? 'Please wait...' : tab === 'login' ? 'Sign In' : 'Create Account'}
             </button>
