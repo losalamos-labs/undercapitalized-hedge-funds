@@ -3,6 +3,8 @@ import yahooFinance from '@/lib/yf';
 import { SearchResult, AssetType } from '@/lib/types';
 import { guessAssetType } from '@/lib/asset';
 
+export const dynamic = 'force-dynamic';
+
 async function searchCoinGecko(q: string): Promise<SearchResult[]> {
   try {
     const resp = await fetch(

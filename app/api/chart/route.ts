@@ -3,6 +3,8 @@ import yahooFinance from '@/lib/yf';
 import { getCached, setCached } from '@/lib/cache';
 import { ChartPoint, AssetType } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 type Range = '1d' | '1w' | '1mo' | '3mo' | '1y';
 
 interface RangeConfig {

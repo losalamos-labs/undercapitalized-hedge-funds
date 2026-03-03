@@ -3,6 +3,8 @@ import pool, { ensureDb } from '@/lib/db';
 import { nanoid } from 'nanoid';
 import { AssetType, Holding, Portfolio } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 async function fetchCurrentPrice(symbol: string, type: AssetType): Promise<number> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const resp = await fetch(`${baseUrl}/api/quote?symbol=${encodeURIComponent(symbol)}&type=${type}`);

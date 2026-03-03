@@ -5,6 +5,8 @@ import { Portfolio, Holding } from '@/lib/types';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   await ensureDb();
   const { searchParams } = new URL(request.url);

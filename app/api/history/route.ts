@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool, { ensureDb } from '@/lib/db';
 import { Transaction } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   await ensureDb();
   const { searchParams } = new URL(request.url);
