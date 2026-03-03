@@ -3,14 +3,17 @@ import { Pool } from 'pg';
 const connectionString = process.env.DATABASE_URL;
 const isProd = process.env.NODE_ENV === 'production';
 
-// Railway's internal Postgres hostname typically does NOT use TLS.
-// Enabling TLS there produces: "There was an error establishing an SSL connection".
+// Railway's internal Postgres (.railway.internal) does not use TLS;
+// don't pass an ssl option at all so pg uses its defaults (no SSL).
+// External connections in production use SSL with self-signed cert tolerance.
 const isRailwayInternal = !!connectionString && connectionString.includes('.railway.internal');
 
-const pool = new Pool({
-  connectionString,
-  ssl: isProd && !isRailwayInternal ? { rejectUnauthorized: false } : false,
-});
+const poolConfig: ConstructorParameters<typeof Pool>[0] = { connectionString };
+if (isProd && !isRailwayInternal) {
+  poolConfig.ssl = { rejectUnauthorized: false };
+}
+
+const pool = new Pool(poolConfig);
 
 export default pool;
 
