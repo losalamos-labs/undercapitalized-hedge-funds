@@ -1,7 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import pool from '@/lib/db';
+import pool, { ensureDb } from '@/lib/db';
 import { nanoid } from 'nanoid';
 
 declare module 'next-auth' {
@@ -34,6 +34,9 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.username || !credentials?.password) return null;
 
         const username = credentials.username.trim().toLowerCase();
+
+        // Ensure tables exist (first run on a fresh DB)
+        await ensureDb();
 
         if (credentials.isRegister === 'true') {
           // Registration

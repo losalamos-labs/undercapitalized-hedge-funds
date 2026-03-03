@@ -1,4 +1,4 @@
-import pool from '@/lib/db';
+import pool, { ensureDb } from '@/lib/db';
 import { getCached, setCached } from '@/lib/cache';
 
 export interface LeaderboardEntry {
@@ -35,6 +35,7 @@ async function fetchPrice(symbol: string, assetType: string): Promise<number | n
 }
 
 export async function getLeaderboard(forceRefresh = false): Promise<CachedLeaderboard> {
+  await ensureDb();
   if (!forceRefresh) {
     const cached = getCached<CachedLeaderboard>(CACHE_KEY);
     if (cached) return cached;

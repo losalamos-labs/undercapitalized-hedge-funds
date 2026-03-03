@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import pool from '@/lib/db';
+import pool, { ensureDb } from '@/lib/db';
 
 export async function GET() {
+  await ensureDb();
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {

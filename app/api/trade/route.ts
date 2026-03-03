@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import pool, { ensureDb } from '@/lib/db';
 import { nanoid } from 'nanoid';
 import { AssetType, Holding, Portfolio } from '@/lib/types';
 
@@ -13,6 +13,8 @@ async function fetchCurrentPrice(symbol: string, type: AssetType): Promise<numbe
 }
 
 export async function POST(request: NextRequest) {
+  await ensureDb();
+
   const body = await request.json();
   const { portfolioId, symbol, type, action, quantity, name } = body;
 

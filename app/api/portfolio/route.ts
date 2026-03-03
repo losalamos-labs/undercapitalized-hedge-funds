@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import pool, { ensureDb } from '@/lib/db';
 import { nanoid } from 'nanoid';
 import { Portfolio, Holding } from '@/lib/types';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
+  await ensureDb();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  await ensureDb();
   const body = await request.json();
   const { name } = body;
 

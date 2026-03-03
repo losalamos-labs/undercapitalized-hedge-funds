@@ -48,3 +48,21 @@ export async function initDb() {
     );
   `);
 }
+
+let ensurePromise: Promise<void> | null = null;
+
+/**
+ * Ensures required tables exist. Safe to call on every request.
+ *
+ * We intentionally do this lazily at runtime (instead of migrations) to keep the
+ * demo app zero-setup.
+ */
+export async function ensureDb() {
+  if (!ensurePromise) {
+    ensurePromise = initDb().catch((err) => {
+      ensurePromise = null;
+      throw err;
+    });
+  }
+  return ensurePromise;
+}

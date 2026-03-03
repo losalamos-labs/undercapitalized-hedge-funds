@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import pool, { ensureDb } from '@/lib/db';
 import { Transaction } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
+  await ensureDb();
   const { searchParams } = new URL(request.url);
   const portfolioId = searchParams.get('portfolioId');
   const symbol = searchParams.get('symbol');
