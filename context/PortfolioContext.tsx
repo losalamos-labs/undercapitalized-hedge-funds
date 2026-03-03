@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Portfolio, Holding } from '@/lib/types';
+import { useSession } from 'next-auth/react';
 
 interface PortfolioContextValue {
   portfolioId: string | null;
@@ -24,6 +25,7 @@ const PortfolioContext = createContext<PortfolioContextValue>({
 });
 
 export function PortfolioProvider({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
   const [portfolioId, setPortfolioIdState] = useState<string | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -43,7 +45,6 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
       setPortfolio(data.portfolio);
       setHoldings(data.holdings);
 
-      // Fetch current prices for holdings to compute total value
       const holdingsData = data.holdings as Holding[];
       if (holdingsData.length === 0) {
         setTotalValue(data.portfolio.cash);
@@ -78,15 +79,40 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [portfolioId, fetchPortfolio]);
 
+  // Auto-load portfolio from session user or localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('portfolioId');
-    if (stored) {
-      setPortfolioIdState(stored);
-      fetchPortfolio(stored).finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [fetchPortfolio]);
+    if (status === 'loading') return;
+
+    const loadPortfolio = async () => {
+      setLoading(true);
+      try {
+        // If authenticated, fetch the user's portfolio
+        if (session?.user?.id) {
+          const resp = await fetch(`/api/portfolio/user`);
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.id) {
+              setPortfolioIdState(data.id);
+              await fetchPortfolio(data.id);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+
+        // Fall back to localStorage
+        const stored = localStorage.getItem('portfolioId');
+        if (stored) {
+          setPortfolioIdState(stored);
+          await fetchPortfolio(stored);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPortfolio();
+  }, [session, status, fetchPortfolio]);
 
   useEffect(() => {
     if (portfolioId) {

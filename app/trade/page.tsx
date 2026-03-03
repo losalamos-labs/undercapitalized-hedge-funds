@@ -519,12 +519,80 @@ function TradePage() {
       )}
 
       {!selectedAsset && (
-        <div className="card text-center py-16">
-          <Search className="w-12 h-12 text-gray-700 mx-auto mb-3" />
-          <p className="text-gray-400">Search for an asset above to start trading</p>
-          <p className="text-gray-600 text-sm mt-2">
-            Try: AAPL, bitcoin, EURUSD=X, GC=F (gold), SPY
-          </p>
+        <div className="space-y-6">
+          {/* Popular Assets Quick Access */}
+          <div className="card">
+            <h2 className="text-sm font-semibold text-gray-300 mb-4">Popular Assets</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { symbol: 'AAPL', name: 'Apple', type: 'stock' as AssetType },
+                { symbol: 'bitcoin', name: 'Bitcoin', type: 'crypto' as AssetType },
+                { symbol: 'EURUSD=X', name: 'EUR/USD', type: 'forex' as AssetType },
+                { symbol: 'GC=F', name: 'Gold', type: 'commodity' as AssetType },
+                { symbol: 'SPY', name: 'S&P 500 ETF', type: 'etf' as AssetType },
+                { symbol: 'ethereum', name: 'Ethereum', type: 'crypto' as AssetType },
+                { symbol: 'TSLA', name: 'Tesla', type: 'stock' as AssetType },
+                { symbol: 'CL=F', name: 'Crude Oil', type: 'commodity' as AssetType },
+              ].map((asset) => (
+                <button
+                  key={asset.symbol}
+                  onClick={() => selectAsset(asset)}
+                  className="flex flex-col items-start p-3 bg-gray-800/60 hover:bg-gray-800 border border-gray-700/50 hover:border-gray-600 rounded-xl transition-all text-left group"
+                >
+                  <span className="font-semibold text-white text-sm group-hover:text-green-400 transition-colors">
+                    {asset.symbol === 'bitcoin' ? 'BTC' : asset.symbol === 'ethereum' ? 'ETH' : asset.symbol}
+                  </span>
+                  <span className="text-gray-500 text-xs mt-0.5">{asset.name}</span>
+                  <span
+                    className={`mt-2 text-xs px-1.5 py-0.5 rounded-full ${
+                      asset.type === 'crypto'
+                        ? 'bg-orange-500/20 text-orange-400'
+                        : asset.type === 'etf'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : asset.type === 'forex'
+                        ? 'bg-purple-500/20 text-purple-400'
+                        : asset.type === 'commodity'
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-green-500/20 text-green-400'
+                    }`}
+                  >
+                    {asset.type}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Asset Categories Reference */}
+          <div className="card">
+            <h2 className="text-sm font-semibold text-gray-300 mb-3">Supported Asset Classes</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs text-gray-500">
+              <div>
+                <p className="text-gray-400 font-medium mb-1">🇺🇸 US Stocks</p>
+                <p>AAPL, TSLA, NVDA, MSFT, AMZN</p>
+              </div>
+              <div>
+                <p className="text-gray-400 font-medium mb-1">🌍 Global Stocks</p>
+                <p>7203.T (Toyota), VOW3.DE (VW), RELIANCE.NS (NSE), RIO.AX (ASX), HSBA.L (LSE)</p>
+              </div>
+              <div>
+                <p className="text-gray-400 font-medium mb-1">₿ Crypto</p>
+                <p>bitcoin, ethereum, solana, cardano</p>
+              </div>
+              <div>
+                <p className="text-gray-400 font-medium mb-1">💱 Forex</p>
+                <p>EURUSD=X, GBPUSD=X, USDJPY=X, AUDUSD=X</p>
+              </div>
+              <div>
+                <p className="text-gray-400 font-medium mb-1">🏅 Commodities</p>
+                <p>GC=F (Gold), SI=F (Silver), CL=F (Oil), NG=F (Gas), ZW=F (Wheat)</p>
+              </div>
+              <div>
+                <p className="text-gray-400 font-medium mb-1">📊 ETFs</p>
+                <p>SPY, QQQ, VTI, VUSA.L, EWJ, ARKK</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

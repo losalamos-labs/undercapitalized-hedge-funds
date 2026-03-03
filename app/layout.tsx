@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import { PortfolioProvider } from '@/context/PortfolioContext';
+import { SessionProviderWrapper } from '@/components/SessionProviderWrapper';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -15,12 +16,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} bg-gray-950 text-gray-100 min-h-screen`}>
-        <PortfolioProvider>
-          <Navbar />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {children}
-          </main>
-        </PortfolioProvider>
+        <SessionProviderWrapper>
+          <PortfolioProvider>
+            <Navbar />
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {children}
+            </main>
+          </PortfolioProvider>
+        </SessionProviderWrapper>
       </body>
     </html>
   );

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import pool from '@/lib/db';
 import { Transaction } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
@@ -12,21 +12,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'portfolioId required' }, { status: 400 });
   }
 
-  const db = getDb();
-  let query = 'SELECT * FROM transactions WHERE portfolio_id = ?';
-  const params: (string)[] = [portfolioId];
+  let query = 'SELECT * FROM transactions WHERE portfolio_id = $1';
+  const params: (string | number)[] = [portfolioId];
+  let paramIdx = 2;
 
   if (symbol) {
-    query += ' AND symbol = ?';
+    query += ` AND symbol = $${paramIdx++}`;
     params.push(symbol);
   }
   if (action && ['buy', 'sell'].includes(action)) {
-    query += ' AND action = ?';
+    query += ` AND action = $${paramIdx++}`;
     params.push(action);
   }
 
   query += ' ORDER BY timestamp DESC';
 
-  const transactions = db.prepare(query).all(...params) as Transaction[];
-  return NextResponse.json(transactions);
+  const result = await pool.query(query, params);
+  return NextResponse.json(result.rows as Transaction[]);
 }

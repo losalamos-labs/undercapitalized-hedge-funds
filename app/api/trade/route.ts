@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import pool from '@/lib/db';
 import { nanoid } from 'nanoid';
 import { AssetType, Holding, Portfolio } from '@/lib/types';
 
@@ -8,6 +8,7 @@ async function fetchCurrentPrice(symbol: string, type: AssetType): Promise<numbe
   const resp = await fetch(`${baseUrl}/api/quote?symbol=${encodeURIComponent(symbol)}&type=${type}`);
   if (!resp.ok) throw new Error('Failed to fetch price');
   const data = await resp.json();
+  if (!data.price) throw new Error('No price returned');
   return data.price;
 }
 
@@ -28,11 +29,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'quantity must be positive' }, { status: 400 });
   }
 
-  const db = getDb();
-  const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ?').get(portfolioId) as Portfolio | undefined;
-  if (!portfolio) {
+  const portfolioResult = await pool.query('SELECT * FROM portfolios WHERE id = $1', [portfolioId]);
+  if (portfolioResult.rows.length === 0) {
     return NextResponse.json({ error: 'Portfolio not found' }, { status: 404 });
   }
+  const portfolio = portfolioResult.rows[0] as Portfolio;
 
   let price: number;
   try {
@@ -42,71 +43,81 @@ export async function POST(request: NextRequest) {
   }
 
   const total = price * qty;
+  const client = await pool.connect();
 
-  if (action === 'buy') {
-    if (portfolio.cash < total) {
-      return NextResponse.json({ error: 'Insufficient cash balance' }, { status: 400 });
-    }
+  try {
+    await client.query('BEGIN');
 
-    const existing = db
-      .prepare('SELECT * FROM holdings WHERE portfolio_id = ? AND symbol = ?')
-      .get(portfolioId, symbol) as Holding | undefined;
+    if (action === 'buy') {
+      if (portfolio.cash < total) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Insufficient cash balance' }, { status: 400 });
+      }
 
-    const executeTrade = db.transaction(() => {
+      const existingResult = await client.query(
+        'SELECT * FROM holdings WHERE portfolio_id = $1 AND symbol = $2',
+        [portfolioId, symbol]
+      );
+      const existing = existingResult.rows[0] as Holding | undefined;
+
       if (existing) {
         const newQty = existing.quantity + qty;
         const newAvgCost = (existing.avg_cost * existing.quantity + price * qty) / newQty;
-        db.prepare(
-          'UPDATE holdings SET quantity = ?, avg_cost = ?, name = ? WHERE portfolio_id = ? AND symbol = ?'
-        ).run(newQty, newAvgCost, name || existing.name, portfolioId, symbol);
+        await client.query(
+          'UPDATE holdings SET quantity = $1, avg_cost = $2, name = $3 WHERE portfolio_id = $4 AND symbol = $5',
+          [newQty, newAvgCost, name || existing.name, portfolioId, symbol]
+        );
       } else {
-        db.prepare(
-          'INSERT INTO holdings (portfolio_id, symbol, asset_type, name, quantity, avg_cost) VALUES (?, ?, ?, ?, ?, ?)'
-        ).run(portfolioId, symbol, type, name || symbol, qty, price);
-      }
-
-      db.prepare('UPDATE portfolios SET cash = cash - ? WHERE id = ?').run(total, portfolioId);
-
-      const txId = nanoid();
-      db.prepare(
-        'INSERT INTO transactions (id, portfolio_id, symbol, asset_type, name, action, quantity, price, total, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-      ).run(txId, portfolioId, symbol, type, name || symbol, action, qty, price, total, Date.now());
-    });
-
-    executeTrade();
-  } else {
-    // sell
-    const existing = db
-      .prepare('SELECT * FROM holdings WHERE portfolio_id = ? AND symbol = ?')
-      .get(portfolioId, symbol) as Holding | undefined;
-
-    if (!existing || existing.quantity < qty) {
-      return NextResponse.json({ error: 'Insufficient holdings' }, { status: 400 });
-    }
-
-    const executeTrade = db.transaction(() => {
-      const newQty = existing.quantity - qty;
-      if (newQty === 0) {
-        db.prepare('DELETE FROM holdings WHERE portfolio_id = ? AND symbol = ?').run(portfolioId, symbol);
-      } else {
-        db.prepare('UPDATE holdings SET quantity = ? WHERE portfolio_id = ? AND symbol = ?').run(
-          newQty,
-          portfolioId,
-          symbol
+        await client.query(
+          'INSERT INTO holdings (portfolio_id, symbol, asset_type, name, quantity, avg_cost) VALUES ($1, $2, $3, $4, $5, $6)',
+          [portfolioId, symbol, type, name || symbol, qty, price]
         );
       }
 
-      db.prepare('UPDATE portfolios SET cash = cash + ? WHERE id = ?').run(total, portfolioId);
+      await client.query('UPDATE portfolios SET cash = cash - $1 WHERE id = $2', [total, portfolioId]);
+    } else {
+      // sell
+      const existingResult = await client.query(
+        'SELECT * FROM holdings WHERE portfolio_id = $1 AND symbol = $2',
+        [portfolioId, symbol]
+      );
+      const existing = existingResult.rows[0] as Holding | undefined;
 
-      const txId = nanoid();
-      db.prepare(
-        'INSERT INTO transactions (id, portfolio_id, symbol, asset_type, name, action, quantity, price, total, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-      ).run(txId, portfolioId, symbol, type, name || symbol, action, qty, price, total, Date.now());
-    });
+      if (!existing || existing.quantity < qty) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Insufficient holdings' }, { status: 400 });
+      }
 
-    executeTrade();
+      const newQty = existing.quantity - qty;
+      if (newQty === 0) {
+        await client.query('DELETE FROM holdings WHERE portfolio_id = $1 AND symbol = $2', [
+          portfolioId,
+          symbol,
+        ]);
+      } else {
+        await client.query(
+          'UPDATE holdings SET quantity = $1 WHERE portfolio_id = $2 AND symbol = $3',
+          [newQty, portfolioId, symbol]
+        );
+      }
+
+      await client.query('UPDATE portfolios SET cash = cash + $1 WHERE id = $2', [total, portfolioId]);
+    }
+
+    const txId = nanoid();
+    await client.query(
+      'INSERT INTO transactions (id, portfolio_id, symbol, asset_type, name, action, quantity, price, total, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+      [txId, portfolioId, symbol, type, name || symbol, action, qty, price, total, Date.now()]
+    );
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 
-  const updatedPortfolio = db.prepare('SELECT * FROM portfolios WHERE id = ?').get(portfolioId);
-  return NextResponse.json({ success: true, price, total, portfolio: updatedPortfolio });
+  const updatedPortfolio = await pool.query('SELECT * FROM portfolios WHERE id = $1', [portfolioId]);
+  return NextResponse.json({ success: true, price, total, portfolio: updatedPortfolio.rows[0] });
 }

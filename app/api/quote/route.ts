@@ -25,10 +25,17 @@ export async function GET(request: NextRequest) {
         `https://api.coingecko.com/api/v3/coins/markets?ids=${coinId}&vs_currency=usd&price_change_percentage=24h`,
         { signal: AbortSignal.timeout(8000) }
       );
-      if (!resp.ok) throw new Error('CoinGecko fetch failed');
+      if (!resp.ok) {
+        return NextResponse.json({ error: `CoinGecko API error: ${resp.status}` }, { status: 502 });
+      }
       const data = await resp.json();
-      if (!data || data.length === 0) throw new Error('No data from CoinGecko');
+      if (!data || data.length === 0) {
+        return NextResponse.json({ error: `Crypto asset not found: ${symbol}` }, { status: 404 });
+      }
       const coin = data[0];
+      if (!coin.current_price) {
+        return NextResponse.json({ error: `No price available for ${symbol}` }, { status: 404 });
+      }
       result = {
         symbol: coin.symbol.toUpperCase(),
         name: coin.name,
@@ -42,10 +49,17 @@ export async function GET(request: NextRequest) {
       };
     } else {
       const quote = await yahooFinance.quote(symbol);
+      if (!quote) {
+        return NextResponse.json({ error: `Symbol not found: ${symbol}` }, { status: 404 });
+      }
+      const price = quote.regularMarketPrice;
+      if (!price) {
+        return NextResponse.json({ error: `No price available for ${symbol}` }, { status: 404 });
+      }
       result = {
         symbol: quote.symbol,
         name: quote.longName || quote.shortName || symbol,
-        price: quote.regularMarketPrice || 0,
+        price,
         change: quote.regularMarketChange || 0,
         changePercent: quote.regularMarketChangePercent || 0,
         marketCap: quote.marketCap,
@@ -55,10 +69,14 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    setCached(cacheKey, result, 60000);
+    setCached(cacheKey, result, 60000); // 1-minute quote cache
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    // Distinguish 404 vs 500
+    if (message.toLowerCase().includes('not found') || message.toLowerCase().includes('no fundamentals')) {
+      return NextResponse.json({ error: `Symbol not found: ${symbol}` }, { status: 404 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

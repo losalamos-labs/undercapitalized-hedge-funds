@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { formatCurrency } from '@/lib/format';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSession, signOut } from 'next-auth/react';
 
 const navLinks = [
   { href: '/', label: 'Dashboard' },
@@ -17,6 +18,7 @@ const navLinks = [
 export default function Navbar() {
   const pathname = usePathname();
   const { portfolio, totalValue } = usePortfolio();
+  const { data: session } = useSession();
 
   return (
     <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
@@ -46,17 +48,33 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Portfolio info */}
-          {portfolio && (
-            <div className="flex items-center gap-2 text-right">
-              <div>
+          {/* Right side: portfolio info + user */}
+          <div className="flex items-center gap-4">
+            {portfolio && (
+              <div className="text-right hidden sm:block">
                 <p className="text-xs text-gray-400 leading-none">{portfolio.name}</p>
                 <p className="text-sm font-semibold text-white leading-none mt-1">
                   {formatCurrency(totalValue)}
                 </p>
               </div>
-            </div>
-          )}
+            )}
+
+            {session?.user && (
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400">
+                  <User className="w-3.5 h-3.5" />
+                  <span>{session.user.name}</span>
+                </div>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Mobile nav */}

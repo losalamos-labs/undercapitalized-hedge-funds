@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import yahooFinance from '@/lib/yf';
 import { SearchResult, AssetType } from '@/lib/types';
 
+const KNOWN_CRYPTO_IDS = new Set([
+  'bitcoin', 'ethereum', 'solana', 'ripple', 'cardano', 'dogecoin', 'polkadot',
+  'litecoin', 'chainlink', 'avalanche-2', 'matic-network', 'binancecoin',
+  'shiba-inu', 'uniswap', 'cosmos', 'algorand', 'stellar', 'tron',
+]);
+
 async function searchCoinGecko(q: string): Promise<SearchResult[]> {
   try {
     const resp = await fetch(
@@ -12,9 +18,9 @@ async function searchCoinGecko(q: string): Promise<SearchResult[]> {
     const data = await resp.json();
     const coins = (data.coins || []).slice(0, 5);
     return coins.map((c: { id: string; symbol: string; name: string; large?: string; thumb?: string }) => ({
-      symbol: c.id, // use coingecko id as symbol for crypto
+      symbol: c.id,
       name: c.name,
-      exchange: 'Crypto',
+      exchange: 'CoinGecko',
       type: 'crypto' as AssetType,
       logoUrl: c.large || c.thumb,
       coinGeckoId: c.id,
@@ -29,6 +35,7 @@ function guessType(quoteType: string | undefined, symbol: string): AssetType {
   if (qt === 'ETF' || qt === 'MUTUALFUND') return 'etf';
   if (qt === 'CURRENCY' || symbol.includes('=X')) return 'forex';
   if (symbol.endsWith('=F')) return 'commodity';
+  if (KNOWN_CRYPTO_IDS.has(symbol.toLowerCase())) return 'crypto';
   return 'stock';
 }
 
@@ -42,28 +49,43 @@ export async function GET(request: NextRequest) {
 
   try {
     const [yahooResults, cryptoResults] = await Promise.allSettled([
-      yahooFinance.search(q, { newsCount: 0, quotesCount: 8 }),
+      yahooFinance.search(q, { newsCount: 0, quotesCount: 10 }),
       searchCoinGecko(q),
     ]);
 
     const results: SearchResult[] = [];
+    const seenSymbols = new Set<string>();
 
     if (yahooResults.status === 'fulfilled') {
       const quotes = yahooResults.value.quotes || [];
-      for (const quote of quotes.slice(0, 8)) {
+      for (const quote of quotes.slice(0, 10)) {
         if (!quote.symbol) continue;
-        const q = quote as { symbol: string; longname?: string; shortname?: string; quoteType?: string; exchange?: string };
+        const qq = quote as {
+          symbol: string;
+          longname?: string;
+          shortname?: string;
+          quoteType?: string;
+          exchange?: string;
+        };
+        const type = guessType(qq.quoteType, qq.symbol);
+        // Include all exchange types — international stocks, ETFs, forex, commodities
         results.push({
-          symbol: q.symbol,
-          name: q.longname || q.shortname || q.symbol,
-          exchange: q.exchange,
-          type: guessType(q.quoteType, q.symbol),
+          symbol: qq.symbol,
+          name: qq.longname || qq.shortname || qq.symbol,
+          exchange: qq.exchange,
+          type,
         });
+        seenSymbols.add(qq.symbol.toLowerCase());
       }
     }
 
     if (cryptoResults.status === 'fulfilled') {
-      results.push(...cryptoResults.value);
+      // Add crypto results that aren't already in Yahoo results
+      for (const c of cryptoResults.value) {
+        if (!seenSymbols.has(c.symbol.toLowerCase())) {
+          results.push(c);
+        }
+      }
     }
 
     return NextResponse.json(results);

@@ -1,35 +1,15 @@
-import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import { Portfolio, Holding } from '@/lib/types';
+import { NextRequest, NextResponse } from 'next/server';
+import { getLeaderboard } from '@/lib/leaderboard-cache';
 
-export async function GET() {
-  const db = getDb();
-  const portfolios = db.prepare('SELECT * FROM portfolios ORDER BY created_at ASC').all() as Portfolio[];
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const forceRefresh = searchParams.get('refresh') === 'true';
 
-  const leaderboard = portfolios.map((p) => {
-    const holdings = db
-      .prepare('SELECT * FROM holdings WHERE portfolio_id = ? AND quantity > 0')
-      .all(p.id) as Holding[];
-
-    // We don't fetch live prices here to avoid rate limits
-    // Return basic info; client can enrich if needed
-    const holdingsValue = holdings.reduce((sum, h) => sum + h.quantity * h.avg_cost, 0);
-    const totalValue = p.cash + holdingsValue;
-    const totalReturn = totalValue - 100000;
-    const totalReturnPercent = (totalReturn / 100000) * 100;
-
-    return {
-      id: p.id,
-      name: p.name,
-      cash: p.cash,
-      totalValue,
-      totalReturn,
-      totalReturnPercent,
-      created_at: p.created_at,
-    };
-  });
-
-  leaderboard.sort((a, b) => b.totalReturnPercent - a.totalReturnPercent);
-
-  return NextResponse.json(leaderboard);
+  try {
+    const result = await getLeaderboard(forceRefresh);
+    return NextResponse.json({ data: result.data, fetchedAt: result.fetchedAt });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
