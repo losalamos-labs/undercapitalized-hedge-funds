@@ -1,6 +1,6 @@
 import pool, { ensureDb } from '@/lib/db';
 import { getCached, setCached } from '@/lib/cache';
-import yahooFinance from '@/lib/yf';
+import { fetchStooqQuote, toStooqSymbol } from '@/lib/stooq';
 
 export interface LeaderboardEntry {
   portfolioId: string;
@@ -33,8 +33,10 @@ async function fetchPrice(symbol: string, assetType: string): Promise<number | n
       return data?.[0]?.current_price ?? null;
     }
 
-    const quote = await yahooFinance.quote(symbol);
-    return quote?.regularMarketPrice ?? null;
+    const stooqSymbol = toStooqSymbol(symbol);
+    if (!stooqSymbol) return null;
+    const q = await fetchStooqQuote(stooqSymbol);
+    return q.close ?? null;
   } catch {
     return null;
   }

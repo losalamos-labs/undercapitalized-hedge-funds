@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import yahooFinance from '@/lib/yf';
+import { fetchStooqQuote, toStooqSymbol } from '@/lib/stooq';
 import { getCached, setCached } from '@/lib/cache';
 import { AssetType, QuoteResult } from '@/lib/types';
 
@@ -50,23 +50,28 @@ export async function GET(request: NextRequest) {
         type: 'crypto',
       };
     } else {
-      const quote = await yahooFinance.quote(symbol);
-      if (!quote) {
-        return NextResponse.json({ error: `Symbol not found: ${symbol}` }, { status: 404 });
+      const stooqSymbol = toStooqSymbol(symbol);
+      if (!stooqSymbol) {
+        return NextResponse.json(
+          { error: `Unsupported symbol format (Stooq): ${symbol}` },
+          { status: 400 }
+        );
       }
-      const price = quote.regularMarketPrice;
-      if (!price) {
-        return NextResponse.json({ error: `No price available for ${symbol}` }, { status: 404 });
-      }
+
+      const q = await fetchStooqQuote(stooqSymbol);
+      const price = q.close;
+      const change = Number.isFinite(q.open) ? price - q.open : 0;
+      const changePercent = q.open ? (change / q.open) * 100 : 0;
+
       result = {
-        symbol: quote.symbol,
-        name: quote.longName || quote.shortName || symbol,
+        symbol: symbol.toUpperCase(),
+        name: symbol.toUpperCase(),
         price,
-        change: quote.regularMarketChange || 0,
-        changePercent: quote.regularMarketChangePercent || 0,
-        marketCap: quote.marketCap,
-        exchange: quote.fullExchangeName || quote.exchange,
-        currency: quote.currency,
+        change,
+        changePercent,
+        marketCap: undefined,
+        exchange: 'Stooq',
+        currency: 'USD',
         type,
       };
     }

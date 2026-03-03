@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import yahooFinance from '@/lib/yf';
+import { fetchStooqDailyHistory, toStooqSymbol } from '@/lib/stooq';
 import { getCached, setCached } from '@/lib/cache';
 import { ChartPoint, AssetType } from '@/lib/types';
 
@@ -54,23 +54,12 @@ export async function GET(request: NextRequest) {
         close: price,
       }));
     } else {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - config.days);
+      const stooqSymbol = toStooqSymbol(symbol);
+      if (!stooqSymbol) throw new Error(`Unsupported symbol format (Stooq): ${symbol}`);
 
-      const result = await yahooFinance.chart(symbol, {
-        period1: startDate,
-        period2: endDate,
-        interval: config.intraday ? '5m' : config.interval,
-      });
-
-      const quotes = result.quotes || [];
-      points = quotes
-        .filter((q) => q.close !== null && q.close !== undefined)
-        .map((q) => ({
-          date: new Date(q.date).toISOString(),
-          close: q.close as number,
-        }));
+      const all = await fetchStooqDailyHistory(stooqSymbol);
+      const cutoff = Date.now() - config.days * 24 * 60 * 60 * 1000;
+      points = all.filter((p) => new Date(p.date).getTime() >= cutoff);
     }
 
     const ttl = range === '1d' ? 60000 : 300000;

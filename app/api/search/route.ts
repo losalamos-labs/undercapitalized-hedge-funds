@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import yahooFinance from '@/lib/yf';
 import { SearchResult, AssetType } from '@/lib/types';
-import { guessAssetType } from '@/lib/asset';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,44 +35,20 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [yahooResults, cryptoResults] = await Promise.allSettled([
-      yahooFinance.search(q, { newsCount: 0, quotesCount: 10 }),
-      searchCoinGecko(q),
-    ]);
-
     const results: SearchResult[] = [];
     const seenSymbols = new Set<string>();
 
-    if (yahooResults.status === 'fulfilled') {
-      const quotes = yahooResults.value.quotes || [];
-      for (const quote of quotes.slice(0, 10)) {
-        if (!quote.symbol) continue;
-        const qq = quote as {
-          symbol: string;
-          longname?: string;
-          shortname?: string;
-          quoteType?: string;
-          exchange?: string;
-        };
-        const type = guessAssetType(qq.symbol, qq.quoteType);
-        // Include all exchange types — international stocks, ETFs, forex, commodities
-        results.push({
-          symbol: qq.symbol,
-          name: qq.longname || qq.shortname || qq.symbol,
-          exchange: qq.exchange,
-          type,
-        });
-        seenSymbols.add(qq.symbol.toLowerCase());
-      }
+    // Lightweight ticker support (primarily US tickers) for Stooq-backed quotes.
+    const trimmed = q.trim();
+    if (/^[A-Za-z]{1,10}(?:\.US)?$/.test(trimmed)) {
+      const sym = trimmed.toUpperCase().replace(/\.US$/, '');
+      results.push({ symbol: sym, name: sym, exchange: 'US', type: 'stock' });
+      seenSymbols.add(sym.toLowerCase());
     }
 
-    if (cryptoResults.status === 'fulfilled') {
-      // Add crypto results that aren't already in Yahoo results
-      for (const c of cryptoResults.value) {
-        if (!seenSymbols.has(c.symbol.toLowerCase())) {
-          results.push(c);
-        }
-      }
+    const cryptoResults = await searchCoinGecko(q);
+    for (const c of cryptoResults) {
+      if (!seenSymbols.has(c.symbol.toLowerCase())) results.push(c);
     }
 
     return NextResponse.json(results);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool, { ensureDb } from '@/lib/db';
 import { nanoid } from 'nanoid';
-import yahooFinance from '@/lib/yf';
+import { fetchStooqQuote, toStooqSymbol } from '@/lib/stooq';
 import { AssetType, Holding, Portfolio } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -20,10 +20,10 @@ async function fetchCurrentPrice(symbol: string, type: AssetType): Promise<numbe
     return price;
   }
 
-  const quote = await yahooFinance.quote(symbol);
-  const price = quote?.regularMarketPrice;
-  if (!price) throw new Error('No price returned');
-  return price;
+  const stooqSymbol = toStooqSymbol(symbol);
+  if (!stooqSymbol) throw new Error('Unsupported symbol format (Stooq)');
+  const q = await fetchStooqQuote(stooqSymbol);
+  return q.close;
 }
 
 export async function POST(request: NextRequest) {
