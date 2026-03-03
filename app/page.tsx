@@ -8,7 +8,7 @@ import { formatCurrency, formatPercent } from '@/lib/format';
 import { Holding, AssetType } from '@/lib/types';
 import { TrendingUp, TrendingDown, DollarSign, Wallet, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface HoldingWithPrice extends Holding {
   currentPrice: number;
@@ -24,7 +24,6 @@ export default function Dashboard() {
   const [totalValue, setTotalValue] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const enrichHoldings = useCallback(async () => {
     if (!portfolio || holdings.length === 0) {
@@ -61,14 +60,15 @@ export default function Dashboard() {
   }, [enrichHoldings]);
 
   useEffect(() => {
-    if (searchParams.get('welcome') === '1') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('welcome') === '1') {
       setShowWelcome(true);
       // Remove the query param so refreshes/bookmarks don't keep showing it.
-      const url = new URL(window.location.href);
-      url.searchParams.delete('welcome');
-      router.replace(url.pathname + url.search);
+      params.delete('welcome');
+      const next = params.toString();
+      router.replace(next ? `/?${next}` : '/');
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   const handleRefresh = async () => {
     await refresh();
