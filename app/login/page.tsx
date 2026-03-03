@@ -37,7 +37,9 @@ export default function LoginPage() {
     if (result?.error) {
       setError(result.error === 'CredentialsSignin' ? 'Invalid credentials' : result.error);
     } else {
-      router.push('/');
+      // Successful sign-in (login or register). For register, show a one-time
+      // confirmation banner on the dashboard.
+      router.push(tab === 'register' ? '/?welcome=1' : '/');
       router.refresh();
     }
   };

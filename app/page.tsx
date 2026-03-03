@@ -8,7 +8,7 @@ import { formatCurrency, formatPercent } from '@/lib/format';
 import { Holding, AssetType } from '@/lib/types';
 import { TrendingUp, TrendingDown, DollarSign, Wallet, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface HoldingWithPrice extends Holding {
   currentPrice: number;
@@ -22,7 +22,9 @@ export default function Dashboard() {
   const [enrichedHoldings, setEnrichedHoldings] = useState<HoldingWithPrice[]>([]);
   const [enriching, setEnriching] = useState(false);
   const [totalValue, setTotalValue] = useState(0);
+  const [showWelcome, setShowWelcome] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const enrichHoldings = useCallback(async () => {
     if (!portfolio || holdings.length === 0) {
@@ -58,6 +60,16 @@ export default function Dashboard() {
     enrichHoldings();
   }, [enrichHoldings]);
 
+  useEffect(() => {
+    if (searchParams.get('welcome') === '1') {
+      setShowWelcome(true);
+      // Remove the query param so refreshes/bookmarks don't keep showing it.
+      const url = new URL(window.location.href);
+      url.searchParams.delete('welcome');
+      router.replace(url.pathname + url.search);
+    }
+  }, [searchParams, router]);
+
   const handleRefresh = async () => {
     await refresh();
     await enrichHoldings();
@@ -81,6 +93,20 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {showWelcome && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3">
+          <div>
+            <p className="text-green-300 font-semibold">Account created</p>
+            <p className="text-green-200/80 text-sm">You’re logged in and ready to trade.</p>
+          </div>
+          <button
+            onClick={() => setShowWelcome(false)}
+            className="text-sm text-green-200/80 hover:text-green-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
