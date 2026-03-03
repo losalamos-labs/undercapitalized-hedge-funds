@@ -21,7 +21,8 @@ const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
 async function fetchPrice(symbol: string, assetType: string): Promise<number | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl =
+      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const resp = await fetch(
       `${baseUrl}/api/quote?symbol=${encodeURIComponent(symbol)}&type=${assetType}`,
       { signal: AbortSignal.timeout(8000) }
