@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchTwelveQuote, toTwelveSymbol } from '@/lib/twelvedata';
 import { getCached, setCached } from '@/lib/cache';
 import { AssetType, QuoteResult } from '@/lib/types';
+import { MOCK_ENABLED, getMockQuote } from '@/lib/mockdata';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,16 @@ export async function GET(request: NextRequest) {
   const cacheKey = `quote:${symbol}:${type}`;
   const cached = getCached<QuoteResult>(cacheKey);
   if (cached) return NextResponse.json(cached);
+
+  // Mock mode: return deterministic data without hitting external APIs
+  if (MOCK_ENABLED) {
+    const mock = getMockQuote(symbol, type);
+    if (mock) {
+      setCached(cacheKey, mock, 30000);
+      return NextResponse.json(mock);
+    }
+    return NextResponse.json({ error: `No mock data for symbol: ${symbol}` }, { status: 404 });
+  }
 
   try {
     let result: QuoteResult;

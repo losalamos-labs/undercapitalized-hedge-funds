@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchTwelveDailyHistory, toTwelveSymbol } from '@/lib/twelvedata';
 import { getCached, setCached } from '@/lib/cache';
 import { ChartPoint, AssetType } from '@/lib/types';
+import { MOCK_ENABLED, getMockHistory } from '@/lib/mockdata';
 
 export const dynamic = 'force-dynamic';
 
