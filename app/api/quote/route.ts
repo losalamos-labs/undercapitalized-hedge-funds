@@ -65,12 +65,12 @@ export async function GET(request: NextRequest) {
 
       result = {
         symbol: symbol.toUpperCase(),
-        name: symbol.toUpperCase(),
+        name: q.name || symbol.toUpperCase(),
         price,
         change,
         changePercent,
         marketCap: undefined,
-        exchange: 'Stooq',
+        exchange: 'Yahoo Finance',
         currency: 'USD',
         type,
       };

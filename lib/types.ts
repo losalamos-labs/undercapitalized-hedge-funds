@@ -1,4 +1,4 @@
-export type AssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity';
+export type AssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'option';
 
 export interface Portfolio {
   id: string;

@@ -54,8 +54,13 @@ export async function GET(request: NextRequest) {
         close: price,
       }));
     } else {
+      // Options don't have multi-year historical OHLC data; return empty gracefully
+      if (type === 'option') {
+        return NextResponse.json([]);
+      }
+
       const stooqSymbol = toStooqSymbol(symbol);
-      if (!stooqSymbol) throw new Error(`Unsupported symbol format (Stooq): ${symbol}`);
+      if (!stooqSymbol) throw new Error(`Unsupported symbol format: ${symbol}`);
 
       const all = await fetchStooqDailyHistory(stooqSymbol);
       const cutoff = Date.now() - config.days * 24 * 60 * 60 * 1000;

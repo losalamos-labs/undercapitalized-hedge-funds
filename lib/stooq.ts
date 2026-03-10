@@ -1,61 +1,75 @@
+/**
+ * Market data via Yahoo Finance (yahoo-finance2).
+ * This module kept its original name for backwards compatibility — the functions
+ * are drop-in replacements for the old Stooq-backed versions.
+ */
+import yahooFinance from '@/lib/yf';
 import { ChartPoint } from '@/lib/types';
 
 /**
- * Stooq is a simple, unauthenticated CSV data source that tends to work in
- * restricted hosting environments where Yahoo endpoints may fail.
+ * Validates and normalises a symbol for Yahoo Finance.
+ * Accepts all standard Yahoo Finance formats:
+ *   - US stocks/ETFs: AAPL, SPY, QQQ
+ *   - Futures/Commodities: GC=F, CL=F, NG=F, ZW=F, SI=F
+ *   - Forex: EURUSD=X, GBPUSD=X, USDJPY=X
+ *   - Global stocks: 7203.T, HSBA.L, VOW3.DE, RELIANCE.NS
+ *   - Options: AAPL260117C00300000
  */
-
 export function toStooqSymbol(symbol: string): string | null {
-  const raw = symbol.trim();
+  const raw = symbol.trim().toUpperCase();
   if (!raw) return null;
-
-  // If the user already provided a Stooq-style symbol, keep it.
-  if (raw.includes('.')) return raw.toLowerCase();
-
-  // Basic US ticker support: AAPL -> aapl.us
-  if (/^[A-Za-z]{1,10}$/.test(raw)) return `${raw.toLowerCase()}.us`;
-
+  // Yahoo Finance symbols: letters, digits, dots, dashes, equals, caret — max 30 chars
+  if (/^[A-Z0-9.=\-^]{1,30}$/.test(raw)) return raw;
   return null;
 }
 
-export async function fetchStooqQuote(stooqSymbol: string) {
-  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(stooqSymbol)}&f=sd2t2ohlcv&h&e=csv`;
-  const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-  if (!resp.ok) throw new Error(`Stooq quote fetch failed: ${resp.status}`);
-  const text = (await resp.text()).trim();
-  const lines = text.split(/\r?\n/);
-  if (lines.length < 2) throw new Error('Stooq quote returned no data');
-
-  const row = lines[1].split(',');
-  // Symbol,Date,Time,Open,High,Low,Close,Volume
-  const date = row[1];
-  const time = row[2];
-  const open = Number(row[3]);
-  const high = Number(row[4]);
-  const low = Number(row[5]);
-  const close = Number(row[6]);
-  const volume = row[7] ? Number(row[7]) : null;
-
-  if (!Number.isFinite(close)) throw new Error('Stooq quote missing close price');
-
-  return { date, time, open, high, low, close, volume };
+export interface StooqQuote {
+  date: string;
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+  name: string;
 }
 
-export async function fetchStooqDailyHistory(stooqSymbol: string): Promise<ChartPoint[]> {
-  const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(stooqSymbol)}&i=d`;
-  const resp = await fetch(url, { signal: AbortSignal.timeout(12000) });
-  if (!resp.ok) throw new Error(`Stooq history fetch failed: ${resp.status}`);
-  const text = (await resp.text()).trim();
-  const lines = text.split(/\r?\n/);
-  // Date,Open,High,Low,Close,Volume
-  const points: ChartPoint[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const row = lines[i].split(',');
-    if (row.length < 5) continue;
-    const date = row[0];
-    const close = Number(row[4]);
-    if (!date || !Number.isFinite(close)) continue;
-    points.push({ date: new Date(date).toISOString(), close });
-  }
-  return points;
+export async function fetchStooqQuote(symbol: string): Promise<StooqQuote> {
+  const q = await yahooFinance.quote(symbol, undefined, { validateResult: false });
+  const price = q.regularMarketPrice;
+  if (!price) throw new Error(`No price available for ${symbol}`);
+  return {
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().split(' ')[0],
+    open: q.regularMarketOpen ?? price,
+    high: q.regularMarketDayHigh ?? price,
+    low: q.regularMarketDayLow ?? price,
+    close: price,
+    volume: q.regularMarketVolume ?? null,
+    name: q.shortName || q.longName || symbol,
+  };
+}
+
+export async function fetchStooqDailyHistory(symbol: string): Promise<ChartPoint[]> {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setFullYear(startDate.getFullYear() - 2);
+
+  // yahoo-finance2's historical() maps to chart() internally
+  const historical = await yahooFinance.historical(
+    symbol,
+    {
+      period1: startDate.toISOString().split('T')[0],
+      period2: endDate.toISOString().split('T')[0],
+      interval: '1d',
+    },
+    { validateResult: false }
+  );
+
+  return historical
+    .map((item: { date: Date; close?: number | null }) => ({
+      date: new Date(item.date).toISOString(),
+      close: item.close ?? 0,
+    }))
+    .filter((p: ChartPoint) => p.close > 0);
 }

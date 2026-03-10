@@ -58,7 +58,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch current price' }, { status: 502 });
   }
 
-  const total = price * qty;
+  // Options are priced per contract (1 contract = 100 shares × premium)
+  const contractMultiplier = type === 'option' ? 100 : 1;
+  const total = price * qty * contractMultiplier;
   const client = await pool.connect();
 
   try {

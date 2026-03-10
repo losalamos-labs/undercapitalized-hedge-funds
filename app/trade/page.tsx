@@ -6,6 +6,7 @@ import { usePortfolio } from '@/context/PortfolioContext';
 import SetupModal from '@/components/SetupModal';
 import { SearchResult, QuoteResult, ChartPoint, AssetType } from '@/lib/types';
 import { formatCurrency, formatPercent, formatMarketCap } from '@/lib/format';
+import { parseOptionSymbol } from '@/lib/asset';
 import {
   LineChart,
   Line,
@@ -18,6 +19,17 @@ import {
 import { Search, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
 type Range = '1d' | '1w' | '1mo' | '3mo' | '1y';
+
+function assetBadgeClass(type: AssetType): string {
+  switch (type) {
+    case 'crypto':    return 'bg-orange-500/20 text-orange-400';
+    case 'etf':       return 'bg-blue-500/20 text-blue-400';
+    case 'forex':     return 'bg-purple-500/20 text-purple-400';
+    case 'commodity': return 'bg-yellow-500/20 text-yellow-400';
+    case 'option':    return 'bg-pink-500/20 text-pink-400';
+    default:          return 'bg-green-500/20 text-green-400';
+  }
+}
 
 const RANGES: { label: string; value: Range }[] = [
   { label: '1D', value: '1d' },
@@ -208,19 +220,7 @@ function TradePage() {
                     {s.exchange && (
                       <span className="text-xs text-gray-500">{s.exchange}</span>
                     )}
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        s.type === 'crypto'
-                          ? 'bg-orange-500/20 text-orange-400'
-                          : s.type === 'etf'
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : s.type === 'forex'
-                          ? 'bg-purple-500/20 text-purple-400'
-                          : s.type === 'commodity'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'bg-green-500/20 text-green-400'
-                      }`}
-                    >
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${assetBadgeClass(s.type)}`}>
                       {s.type}
                     </span>
                   </div>
@@ -247,26 +247,24 @@ function TradePage() {
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <h2 className="text-xl font-bold text-white">{quote.name}</h2>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-sm text-gray-400">{selectedAsset.symbol}</span>
                         {quote.exchange && (
                           <span className="text-xs text-gray-500">· {quote.exchange}</span>
                         )}
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${
-                            selectedAsset.type === 'crypto'
-                              ? 'bg-orange-500/20 text-orange-400'
-                              : selectedAsset.type === 'etf'
-                              ? 'bg-blue-500/20 text-blue-400'
-                              : selectedAsset.type === 'forex'
-                              ? 'bg-purple-500/20 text-purple-400'
-                              : selectedAsset.type === 'commodity'
-                              ? 'bg-yellow-500/20 text-yellow-400'
-                              : 'bg-green-500/20 text-green-400'
-                          }`}
-                        >
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${assetBadgeClass(selectedAsset.type)}`}>
                           {selectedAsset.type}
                         </span>
+                        {/* Show option details inline */}
+                        {selectedAsset.type === 'option' && (() => {
+                          const parsed = parseOptionSymbol(selectedAsset.symbol);
+                          if (!parsed) return null;
+                          return (
+                            <span className="text-xs text-gray-400">
+                              {parsed.underlying} · {parsed.optionType.toUpperCase()} · ${parsed.strike.toFixed(2)} strike · exp {parsed.expiry.toLocaleDateString()}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="text-right">
@@ -419,7 +417,9 @@ function TradePage() {
 
               {/* Quantity Input */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  {selectedAsset.type === 'option' ? 'Contracts' : 'Quantity'}
+                </label>
                 <input
                   type="number"
                   className="input w-full"
@@ -427,8 +427,11 @@ function TradePage() {
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   min="0"
-                  step="any"
+                  step={selectedAsset.type === 'option' ? '1' : 'any'}
                 />
+                {selectedAsset.type === 'option' && (
+                  <p className="text-xs text-gray-500 mt-1">1 contract = 100 shares. Cost = premium × 100 × contracts.</p>
+                )}
                 {quote && quantity && !isNaN(parseFloat(quantity)) && (
                   <div className="mt-2 flex justify-between text-sm">
                     <span className="text-gray-400">Estimated Total</span>
@@ -543,19 +546,7 @@ function TradePage() {
                     {asset.symbol === 'bitcoin' ? 'BTC' : asset.symbol === 'ethereum' ? 'ETH' : asset.symbol}
                   </span>
                   <span className="text-gray-500 text-xs mt-0.5">{asset.name}</span>
-                  <span
-                    className={`mt-2 text-xs px-1.5 py-0.5 rounded-full ${
-                      asset.type === 'crypto'
-                        ? 'bg-orange-500/20 text-orange-400'
-                        : asset.type === 'etf'
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : asset.type === 'forex'
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : asset.type === 'commodity'
-                        ? 'bg-yellow-500/20 text-yellow-400'
-                        : 'bg-green-500/20 text-green-400'
-                    }`}
-                  >
+                  <span className={`mt-2 text-xs px-1.5 py-0.5 rounded-full ${assetBadgeClass(asset.type)}`}>
                     {asset.type}
                   </span>
                 </button>
@@ -590,6 +581,10 @@ function TradePage() {
               <div>
                 <p className="text-gray-400 font-medium mb-1">📊 ETFs</p>
                 <p>SPY, QQQ, VTI, VUSA.L, EWJ, ARKK</p>
+              </div>
+              <div>
+                <p className="text-gray-400 font-medium mb-1">🎯 Options</p>
+                <p>Search any ticker to find options. Use OCC format: AAPL260620C00250000</p>
               </div>
             </div>
           </div>
