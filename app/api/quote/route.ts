@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchStooqQuote, toStooqSymbol } from '@/lib/stooq';
+import { fetchTwelveQuote, toTwelveSymbol } from '@/lib/twelvedata';
 import { getCached, setCached } from '@/lib/cache';
 import { AssetType, QuoteResult } from '@/lib/types';
 
@@ -50,15 +50,10 @@ export async function GET(request: NextRequest) {
         type: 'crypto',
       };
     } else {
-      const stooqSymbol = toStooqSymbol(symbol);
-      if (!stooqSymbol) {
-        return NextResponse.json(
-          { error: `Unsupported symbol format (Stooq): ${symbol}` },
-          { status: 400 }
-        );
-      }
+      // Convert to Twelve Data symbol format
+      const tdSymbol = toTwelveSymbol(symbol, type);
 
-      const q = await fetchStooqQuote(stooqSymbol);
+      const q = await fetchTwelveQuote(tdSymbol);
       const price = q.close;
       const change = Number.isFinite(q.open) ? price - q.open : 0;
       const changePercent = q.open ? (change / q.open) * 100 : 0;
@@ -70,7 +65,7 @@ export async function GET(request: NextRequest) {
         change,
         changePercent,
         marketCap: undefined,
-        exchange: 'Yahoo Finance',
+        exchange: 'Twelve Data',
         currency: 'USD',
         type,
       };
@@ -80,8 +75,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    // Distinguish 404 vs 500
-    if (message.toLowerCase().includes('not found') || message.toLowerCase().includes('no fundamentals')) {
+    if (message.toLowerCase().includes('not found') || message.toLowerCase().includes('no symbol')) {
       return NextResponse.json({ error: `Symbol not found: ${symbol}` }, { status: 404 });
     }
     return NextResponse.json({ error: message }, { status: 500 });

@@ -1,19 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SearchResult, AssetType } from '@/lib/types';
-import yahooFinance from '@/lib/yf';
 
 export const dynamic = 'force-dynamic';
 
-/** Map Yahoo Finance quoteType → our AssetType */
-function mapQuoteType(quoteType: string | undefined): AssetType | null {
-  switch ((quoteType || '').toUpperCase()) {
-    case 'EQUITY': return 'stock';
-    case 'ETF':    return 'etf';
-    case 'FUTURE': return 'commodity';
-    case 'CURRENCY': return 'forex';
-    case 'OPTION': return 'option';
-    // Skip crypto (we use CoinGecko) and index/mutualfund/etc.
-    default: return null;
+const TD_API_KEY = process.env.TWELVEDATA_API_KEY || 'demo';
+const TD_BASE = 'https://api.twelvedata.com';
+
+/** Map Twelve Data instrument_type → our AssetType */
+function mapInstrumentType(t: string | undefined): AssetType | null {
+  switch ((t || '').toLowerCase()) {
+    case 'common stock':
+    case 'equity':
+    case 'depositary receipt':
+      return 'stock';
+    case 'etf':
+    case 'fund':
+      return 'etf';
+    case 'forex':
+    case 'currency':
+      return 'forex';
+    case 'commodity':
+    case 'physical currency':
+      return 'commodity';
+    default:
+      return null;
+  }
+}
+
+async function searchTwelveData(q: string): Promise<SearchResult[]> {
+  try {
+    const url = `${TD_BASE}/symbol_search?symbol=${encodeURIComponent(q)}&apikey=${TD_API_KEY}&outputsize=8`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const matches: Array<{
+      symbol: string;
+      instrument_name: string;
+      exchange: string;
+      instrument_type: string;
+    }> = data.data || [];
+    return matches
+      .map((m) => {
+        const type = mapInstrumentType(m.instrument_type);
+        if (!type) return null;
+        return {
+          symbol: m.symbol,
+          name: m.instrument_name,
+          exchange: m.exchange,
+          type,
+        } as SearchResult;
+      })
+      .filter((r): r is SearchResult => r !== null)
+      .slice(0, 6);
+  } catch {
+    return [];
   }
 }
 
@@ -48,42 +88,28 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const results: SearchResult[] = [];
-    const seenSymbols = new Set<string>();
-
-    // Run Yahoo Finance search and CoinGecko in parallel
-    const [yfResults, cryptoResults] = await Promise.allSettled([
-      yahooFinance.search(q, undefined, { validateResult: false }),
+    const [tdResults, cryptoResults] = await Promise.allSettled([
+      searchTwelveData(q),
       searchCoinGecko(q),
     ]);
 
-    // Process Yahoo Finance results
-    if (yfResults.status === 'fulfilled') {
-      const yfValue = yfResults.value as { quotes?: Array<{ symbol?: string; isYahooFinance?: boolean; quoteType?: string; shortname?: string; longname?: string; exchDisp?: string; exchange?: string }> };
-      for (const quote of (yfValue.quotes || []).slice(0, 8)) {
-        if (!quote.symbol || !quote.isYahooFinance) continue;
-        const type = mapQuoteType(quote.quoteType);
-        if (!type) continue; // skip types we don't support
+    const results: SearchResult[] = [];
+    const seenSymbols = new Set<string>();
 
-        const sym = quote.symbol;
-        if (seenSymbols.has(sym.toLowerCase())) continue;
-        seenSymbols.add(sym.toLowerCase());
-
-        results.push({
-          symbol: sym,
-          name: (quote.shortname || quote.longname || sym) as string,
-          exchange: (quote.exchDisp || quote.exchange) as string | undefined,
-          type,
-        });
+    if (tdResults.status === 'fulfilled') {
+      for (const r of tdResults.value) {
+        if (!seenSymbols.has(r.symbol.toLowerCase())) {
+          seenSymbols.add(r.symbol.toLowerCase());
+          results.push(r);
+        }
       }
     }
 
-    // Process CoinGecko results
     if (cryptoResults.status === 'fulfilled') {
-      for (const c of cryptoResults.value) {
-        if (!seenSymbols.has(c.symbol.toLowerCase())) {
-          seenSymbols.add(c.symbol.toLowerCase());
-          results.push(c);
+      for (const r of cryptoResults.value) {
+        if (!seenSymbols.has(r.symbol.toLowerCase())) {
+          seenSymbols.add(r.symbol.toLowerCase());
+          results.push(r);
         }
       }
     }

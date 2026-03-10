@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchStooqDailyHistory, toStooqSymbol } from '@/lib/stooq';
+import { fetchTwelveDailyHistory, toTwelveSymbol } from '@/lib/twelvedata';
 import { getCached, setCached } from '@/lib/cache';
 import { ChartPoint, AssetType } from '@/lib/types';
 
@@ -59,10 +59,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json([]);
       }
 
-      const stooqSymbol = toStooqSymbol(symbol);
-      if (!stooqSymbol) throw new Error(`Unsupported symbol format: ${symbol}`);
-
-      const all = await fetchStooqDailyHistory(stooqSymbol);
+      const tdSymbol = toTwelveSymbol(symbol, type);
+      const all = await fetchTwelveDailyHistory(tdSymbol);
       const cutoff = Date.now() - config.days * 24 * 60 * 60 * 1000;
       points = all.filter((p) => new Date(p.date).getTime() >= cutoff);
     }
