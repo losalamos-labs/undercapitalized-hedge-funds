@@ -39,6 +39,15 @@ export async function GET(request: NextRequest) {
 
   const config = RANGE_CONFIG[range] || RANGE_CONFIG['1mo'];
 
+  // Mock mode
+  if (MOCK_ENABLED) {
+    const all = getMockHistory(symbol);
+    const cutoff = Date.now() - config.days * 24 * 60 * 60 * 1000;
+    const points = all.filter((p) => new Date(p.date).getTime() >= cutoff);
+    setCached(cacheKey, points, 30000);
+    return NextResponse.json(points);
+  }
+
   try {
     let points: ChartPoint[] = [];
 
