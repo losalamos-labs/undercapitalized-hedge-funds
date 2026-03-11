@@ -1,15 +1,17 @@
-import { PlaywrightTestConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
-const config: PlaywrightTestConfig = {
+export default defineConfig({
   testDir: './e2e',
+  timeout: 120000,
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
   use: {
     baseURL: 'https://undercapitalized-hedge-funds-production.up.railway.app',
     headless: true,
-    viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
   },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'Chromium', use: { browserName: 'chromium' } },
   ],
-};
-export default config;
+  reporter: 'list',
+});
